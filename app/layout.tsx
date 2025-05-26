@@ -41,7 +41,7 @@ export default function RootLayout({
         <QueryClientProvider client={queryClient}>
           <div className="min-h-screen flex flex-col">
             {!isAdmin && !isLogin && !isClinica && <Navbar />}
-            <main className="flex-1 container mx-auto px-4 py-8">
+            <main className="flex-1 w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-6 lg:px-8 py-8">
               {children}
             </main>
           </div>

@@ -48,9 +48,9 @@ export function ConversasRecentes({ conversas, loading, isLoading }: ConversasRe
   if (isLoadingState) {
     return (
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
+        {/* <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">Conversas Recentes</h2>
-        </div>
+        </div> */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -112,9 +112,9 @@ export function ConversasRecentes({ conversas, loading, isLoading }: ConversasRe
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-medium text-gray-900">Conversas Recentes</h2>
-      </div>
+          {/* <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Conversas Recentes</h2>
+          </div> */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

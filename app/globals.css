@@ -52,6 +52,36 @@ body {
   transition-duration: 150ms;
 }
 
+/* Melhorias para telas maiores */
+@media (min-width: 1920px) {
+  .container-ultra-wide {
+    max-width: 1800px;
+  }
+}
+
+/* Estilo para cards com hover suave */
+.card-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Grid responsivo customizado */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (min-width: 1536px) {
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

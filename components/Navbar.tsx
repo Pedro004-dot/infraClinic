@@ -27,7 +27,7 @@ export function Navbar({ nomeClinica, clinicaId }: { nomeClinica?: string, clini
 
   return (
     <nav className="bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">

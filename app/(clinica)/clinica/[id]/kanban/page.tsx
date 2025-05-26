@@ -63,7 +63,7 @@ export default function KanbanClinica() {
   return (
     <div className="h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6 px-6 pt-6">
+      <div className="flex justify-between items-center mb-6 pt-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kanban</h1>
           <p className="text-gray-600 text-sm">Gerencie o funil de pacientes da clínica</p>
@@ -75,15 +75,18 @@ export default function KanbanClinica() {
       </div>
 
       {/* Kanban Board */}
-      <div className="px-6 pb-6 h-full">
+      <div className="pb-6 h-full">
         {isLoading ? (
-          <div className="grid grid-cols-4 gap-6 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 h-full">
             {[...Array(4)].map((_, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4 animate-pulse">
-                <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                <div className="space-y-3">
+              <div key={index} className="bg-gray-50 rounded-lg border border-gray-200 flex flex-col h-full">
+                <div className="p-4 border-b border-gray-200">
+                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-8"></div>
+                </div>
+                <div className="flex-1 p-4 space-y-3">
                   {[...Array(3)].map((_, cardIndex) => (
-                    <div key={cardIndex} className="bg-white p-4 rounded-lg">
+                    <div key={cardIndex} className="bg-white p-4 rounded-lg border border-gray-100">
                       <div className="h-4 bg-gray-200 rounded mb-2"></div>
                       <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                     </div>
@@ -94,20 +97,20 @@ export default function KanbanClinica() {
           </div>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-4 gap-6 h-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 h-full">
               {statusDisponiveis.map((status) => {
                 const pacientes = pacientesPorStatus[status] || [];
                 const count = contadores[status] || 0;
                 
                 return (
-                  <div key={status} className={`rounded-lg border-2 ${getCorStatus(status)} flex flex-col h-full`}>
+                  <div key={status} className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
                     {/* Header da Coluna */}
-                    <div className="p-4 border-b border-gray-200">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50">
                       <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
                           {getNomeStatus(status)}
                         </h2>
-                        <span className="px-3 py-1 text-sm font-medium bg-white text-gray-700 rounded-full border">
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
                           {count}
                         </span>
                       </div>
@@ -119,8 +122,8 @@ export default function KanbanClinica() {
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`flex-1 p-4 space-y-3 overflow-y-auto transition-colors ${
-                            snapshot.isDraggingOver ? 'bg-white/50' : ''
+                          className={`flex-1 p-3 space-y-3 overflow-y-auto transition-colors min-h-0 ${
+                            snapshot.isDraggingOver ? 'bg-blue-50' : ''
                           }`}
                         >
                           {pacientes.map((paciente, index) => (
@@ -135,7 +138,7 @@ export default function KanbanClinica() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`bg-white rounded-lg shadow-sm border-l-4 p-4 cursor-grab transition-all hover:shadow-md ${
+                                  className={`bg-white rounded-lg shadow-sm border border-gray-200 hover:border-gray-300 p-4 cursor-grab transition-all hover:shadow-md ${
                                     getCorPrioridade(paciente.prioridade)
                                   } ${
                                     snapshot.isDragging ? 'rotate-1 shadow-lg scale-105' : ''
@@ -146,9 +149,13 @@ export default function KanbanClinica() {
                                   {/* Header do Card */}
                                   <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                                      <UserCircleIcon className="h-8 w-8 text-gray-400 flex-shrink-0" />
+                                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-blue-600 font-medium text-sm">
+                                          {(paciente.nome_preferido || paciente.nome).charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
                                       <div className="min-w-0 flex-1">
-                                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                        <h3 className="text-sm font-medium text-gray-900 truncate">
                                           {paciente.nome_preferido || paciente.nome}
                                         </h3>
                                         <div className="flex items-center space-x-1 text-xs text-gray-500 mt-1">
@@ -189,7 +196,7 @@ export default function KanbanClinica() {
                                   <div className="space-y-2">
                                     {paciente.ultimo_topico && (
                                       <div className="flex flex-wrap gap-1">
-                                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
+                                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full font-medium">
                                           {paciente.ultimo_topico}
                                         </span>
                                       </div>
@@ -208,9 +215,11 @@ export default function KanbanClinica() {
                           {provided.placeholder}
                           
                           {pacientes.length === 0 && (
-                            <div className="text-center py-12 text-gray-400">
-                              <UserCircleIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                              <p className="text-sm">Nenhum paciente</p>
+                            <div className="text-center py-8 text-gray-400">
+                              <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                                <UserCircleIcon className="h-6 w-6 text-gray-400" />
+                              </div>
+                              <p className="text-xs font-medium">Nenhum paciente</p>
                             </div>
                           )}
                         </div>
