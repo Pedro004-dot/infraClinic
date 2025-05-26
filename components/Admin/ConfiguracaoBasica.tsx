@@ -3,12 +3,37 @@
 import { useState, useEffect } from 'react';
 import { FormularioClinica } from './FormularioClinica';
 
+interface DadosClinica {
+  nome: string;
+  tipo: string;
+  cnpj: string;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  telefone: string;
+  email: string;
+  waze: string;
+  google_maps: string;
+  nome_atendente: string;
+  genero_atendente: string;
+  consulta_padrao: string;
+  aceita_convenio: string;
+  formas_pagamento: string[];
+  parcela_minima: string;
+  max_parcelas: number;
+  segunda_sexta: string;
+  sabado: string;
+  domingo: string;
+}
+
 interface ConfiguracaoBasicaProps {
   clinicaId: string;
 }
 
 export function ConfiguracaoBasica({ clinicaId }: ConfiguracaoBasicaProps) {
-  const [dadosClinica, setDadosClinica] = useState(null);
+  const [dadosClinica, setDadosClinica] = useState<DadosClinica | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -96,7 +121,7 @@ export function ConfiguracaoBasica({ clinicaId }: ConfiguracaoBasicaProps) {
   return (
     <div>
       <FormularioClinica
-        dadosIniciais={dadosClinica}
+        dadosIniciais={dadosClinica || undefined}
         onSubmit={handleSalvar}
         isLoading={isSaving}
         isEdit={true}

@@ -5,12 +5,18 @@ interface EmptyStateProps {
   message: string
   onRetry?: () => void
   isError?: boolean
+  actionLabel?: string
+  onAction?: () => void
 }
 
-export function EmptyState({ title, message, onRetry, isError = false }: EmptyStateProps) {
+export function EmptyState({ title, message, onRetry, isError = false, actionLabel, onAction }: EmptyStateProps) {
   const Icon = isError ? ExclamationTriangleIcon : ArrowPathIcon
   const iconColor = isError ? 'text-red-500' : 'text-gray-400'
   const titleColor = isError ? 'text-red-600' : 'text-gray-900'
+
+  // Prioriza onAction se fornecido, senão usa onRetry
+  const handleAction = onAction || onRetry
+  const buttonLabel = actionLabel || 'Tentar novamente'
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 p-8">
@@ -23,12 +29,12 @@ export function EmptyState({ title, message, onRetry, isError = false }: EmptySt
           {message}
         </p>
       </div>
-      {onRetry && (
+      {handleAction && (
         <button
-          onClick={onRetry}
+          onClick={handleAction}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
-          Tentar novamente
+          {buttonLabel}
         </button>
       )}
     </div>

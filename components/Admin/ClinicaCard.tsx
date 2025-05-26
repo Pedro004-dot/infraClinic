@@ -61,7 +61,7 @@ export function ClinicaCard({ clinica, onEdit, onDelete }: ClinicaCardProps) {
   };
 
   // Determinar status baseado nos dados disponíveis
-  const determinarStatus = () => {
+  const determinarStatus = (): 'ativa' | 'inativa' | 'configurando' => {
     if (!clinica.telefone || !clinica.email) {
       return 'configurando';
     }
@@ -69,6 +69,19 @@ export function ClinicaCard({ clinica, onEdit, onDelete }: ClinicaCardProps) {
   };
 
   const status = determinarStatus();
+
+  const getStatusText = (status: 'ativa' | 'inativa' | 'configurando') => {
+    switch (status) {
+      case 'ativa':
+        return 'Ativa';
+      case 'inativa':
+        return 'Inativa';
+      case 'configurando':
+        return 'Configurando';
+      default:
+        return 'Configurando';
+    }
+  };
 
   const handleCardClick = () => {
     router.push(`/admin/clinicas/${clinica.id}/editar`);
@@ -117,7 +130,7 @@ export function ClinicaCard({ clinica, onEdit, onDelete }: ClinicaCardProps) {
           
           <div className="flex items-center space-x-2">
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
-              {status === 'ativa' ? 'Ativa' : status === 'inativa' ? 'Inativa' : 'Configurando'}
+              {getStatusText(status)}
             </span>
             
             <div className="relative">

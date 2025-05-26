@@ -2,10 +2,13 @@ import type { ConversaRecente } from '@/lib/supabase'
 
 interface ConversasRecentesProps {
   conversas: ConversaRecente[]
-  loading: boolean
+  loading?: boolean
+  isLoading?: boolean
 }
 
-export function ConversasRecentes({ conversas, loading }: ConversasRecentesProps) {
+export function ConversasRecentes({ conversas, loading, isLoading }: ConversasRecentesProps) {
+  const isLoadingState = isLoading !== undefined ? isLoading : loading
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'agendado':
@@ -42,7 +45,7 @@ export function ConversasRecentes({ conversas, loading }: ConversasRecentesProps
     }
   }
 
-  if (loading) {
+  if (isLoadingState) {
     return (
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">

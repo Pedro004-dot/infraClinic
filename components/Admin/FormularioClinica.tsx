@@ -59,12 +59,16 @@ interface FormularioClinicaProps {
   dadosIniciais?: Partial<DadosClinica>;
   isEdit?: boolean;
   clinicaId?: number;
+  onSubmit?: (dados: DadosClinica) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function FormularioClinica({ 
   dadosIniciais = {},
   isEdit = false,
-  clinicaId
+  clinicaId,
+  onSubmit,
+  isLoading: isLoadingProp
 }: FormularioClinicaProps) {
   const router = useRouter();
   const [abaAtiva, setAbaAtiva] = useState('dados-basicos');
@@ -111,6 +115,10 @@ export function FormularioClinica({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (onSubmit) {
+      await onSubmit(dados);
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -614,10 +622,10 @@ export function FormularioClinica({
             
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoadingProp !== undefined ? isLoadingProp : isLoading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
             >
-              {isLoading ? (
+              {(isLoadingProp !== undefined ? isLoadingProp : isLoading) ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Salvando...</span>

@@ -5,9 +5,11 @@ interface MetricCardProps {
   value: string
   change: string
   isPositive: boolean
-  loading: boolean
+  loading?: boolean
+  isLoading?: boolean
   icon: React.ComponentType<{ className?: string }>
   color: string
+  period?: 'hoje' | 'semana' | 'mes'
 }
 
 export function MetricCard({ 
@@ -15,11 +17,16 @@ export function MetricCard({
   value, 
   change, 
   isPositive, 
-  loading, 
+  loading,
+  isLoading, 
   icon: Icon, 
-  color 
+  color,
+  period
 }: MetricCardProps) {
-  if (loading) {
+  // Usa isLoading se fornecido, senão usa loading
+  const isLoadingState = isLoading !== undefined ? isLoading : loading
+
+  if (isLoadingState) {
     return (
       <div className="bg-white rounded-lg shadow p-6 animate-pulse">
         <div className="flex items-center justify-between">
