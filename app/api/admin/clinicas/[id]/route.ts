@@ -17,7 +17,7 @@ export async function GET(
       );
     }
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/infra_clinicas?id=eq.${id}&select=*`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/clinicas?id=eq.${id}&select=*`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -100,7 +100,7 @@ export async function PUT(
       };
     }
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/infra_clinicas?id=eq.${id}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/clinicas?id=eq.${id}`, {
       method: 'PATCH',
       headers: {
         'apikey': SUPABASE_ANON_KEY,
@@ -144,7 +144,7 @@ export async function DELETE(
   try {
     const id = params.id;
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/infra_clinicas?id=eq.${id}`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/clinicas?id=eq.${id}`, {
       method: 'DELETE',
       headers: {
         'apikey': SUPABASE_ANON_KEY,

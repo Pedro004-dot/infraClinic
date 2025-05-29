@@ -17,7 +17,7 @@ export function useDashboard(clinicaId: number) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard-data', clinicaId],
     queryFn: () => DashboardService.getDashboardDataByPeriod(clinicaId, 'hoje'),
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
+    refetchInterval: 1000, // Atualizar a cada 30 segundos
   })
 
   // Configurar real-time updates

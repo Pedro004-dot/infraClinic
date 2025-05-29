@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // GET - Listar todas as clínicas
 export async function GET() {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/infra_clinicas?select=*&order=created_at.desc`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/clinicas?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       senha: body.senha || '1234'
     };
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/infra_clinicas`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/clinicas`, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_ANON_KEY,

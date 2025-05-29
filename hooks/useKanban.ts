@@ -9,7 +9,7 @@ export function useKanban(clinicaId: number) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['kanban-data', clinicaId],
     queryFn: () => KanbanService.getDadosKanban(clinicaId),
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
+    refetchInterval: 1000, // Atualizar a cada 30 segundos
   })
 
   // Mutation para mover paciente

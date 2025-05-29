@@ -1,116 +1,45 @@
-import { supabase } from '../lib/supabase'
 import type { DashboardMetrics, ConversaRecente } from '../lib/supabase'
 
 export class DashboardService {
   /**
-   * Busca métricas do dashboard usando a view infra_vw_dashboard_metrics
-   */
-  static async getMetricasDashboard(clinicaId: number): Promise<DashboardMetrics | null> {
-    try {
-      const { data, error } = await supabase
-        .from('infra_vw_dashboard_metrics')
-        .select('*')
-        .eq('clinica_id', clinicaId)
-        .single()
-
-      if (error) {
-        console.error('Erro ao buscar métricas do dashboard:', error)
-        throw error
-      }
-
-      return data
-    } catch (error) {
-      console.error('Erro no serviço de métricas:', error)
-      return null
-    }
-  }
-
-  /**
-   * Busca conversas recentes - temporariamente da tabela direta
-   */
-  static async getConversasRecentes(clinicaId: number, limit: number = 10): Promise<ConversaRecente[]> {
-    try {
-      console.log('🔍 Buscando conversas para clinica_id:', clinicaId)
-      
-      // Buscar da tabela infra_interacoes diretamente com JOIN
-      const { data, error } = await supabase
-        .from('infra_interacoes')
-        .select(`
-          id,
-          clinica_id,
-          paciente_id,
-          intencao,
-          canal,
-          data_interacao,
-          infra_pacientes!inner(
-            nome
-          )
-        `)
-        .or(`clinica_id.eq.${clinicaId},clinica_id.is.null`)
-        .order('data_interacao', { ascending: false })
-        .limit(limit)
-
-      console.log('📊 Resultado da query conversas (tabela direta):', { data, error })
-
-      if (error) {
-        console.error('Erro ao buscar conversas recentes:', error)
-        throw error
-      }
-
-      // Transformar os dados para o formato esperado
-      const conversasFormatadas = data?.map(item => ({
-        id: item.id,
-        clinica_id: item.clinica_id,
-        paciente_id: item.paciente_id,
-        paciente_nome: (item.infra_pacientes as any)?.nome || 'Nome não encontrado',
-        intencao: item.intencao || 'Sem descrição',
-        canal: item.canal,
-        data_interacao: new Date(item.data_interacao),
-        tempo: this.formatarTempoAtras(item.data_interacao),
-        status_atual: 'ATIVO', // Temporário
-        topico: 'Geral' // Temporário
-      })) || []
-
-      console.log('✅ Conversas formatadas:', conversasFormatadas)
-      return conversasFormatadas
-    } catch (error) {
-      console.error('Erro no serviço de conversas:', error)
-      return []
-    }
-  }
-
-  /**
-   * Formatar tempo atrás
-   */
-  private static formatarTempoAtras(dataInteracao: string): string {
-    const agora = new Date()
-    const data = new Date(dataInteracao)
-    const diffMs = agora.getTime() - data.getTime()
-    
-    const minutos = Math.floor(diffMs / (1000 * 60))
-    const horas = Math.floor(diffMs / (1000 * 60 * 60))
-    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
-    if (minutos < 60) return `${minutos} min atrás`
-    if (horas < 24) return `${horas}h atrás`
-    return `${dias} dias atrás`
-  }
-
-  /**
-   * Busca dados do dashboard usando a function get_dashboard_data
+   * Busca dados do dashboard usando a nova API
    */
   static async getDashboardDataByPeriod(
     clinicaId: number, 
     periodo: 'hoje' | 'semana' | 'mes'
-  ): Promise<{ metrics: DashboardMetrics | null; conversas: ConversaRecente[] }> {
+  ): Promise<{ metrics: any | null; conversas: ConversaRecente[] }> {
     try {
-      // Buscar métricas principais
-      const metrics = await this.getMetricasDashboard(clinicaId)
+      console.log('🔍 Buscando dados do dashboard para clinica_id:', clinicaId)
       
-      // Buscar conversas recentes
-      const conversas = await this.getConversasRecentes(clinicaId)
+      const response = await fetch(`/api/clinica/${clinicaId}/dashboard`)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Erro na API do dashboard:', response.status, errorText)
+        throw new Error(`Erro HTTP ${response.status}: ${errorText}`)
+      }
 
-      return { metrics, conversas }
+      const data = await response.json()
+      console.log('✅ Dados recebidos da API:', data)
+
+      // Transformar conversas para o formato esperado
+      const conversasFormatadas = data.conversas_recentes?.map((conversa: any) => ({
+        id: conversa.id,
+        clinica_id: conversa.clinica_id,
+        paciente_id: conversa.paciente_id,
+        paciente_nome: conversa.paciente_nome,
+        intencao: conversa.intencao,
+        canal: conversa.canal,
+        data_interacao: new Date(conversa.data_interacao),
+        tempo: conversa.tempo_formatado,
+        status_atual: conversa.status_atual,
+        topico: conversa.topico
+      })) || []
+
+      return { 
+        metrics: data, 
+        conversas: conversasFormatadas 
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
       return { metrics: null, conversas: [] }
@@ -120,32 +49,22 @@ export class DashboardService {
   /**
    * Formatar métricas para o período selecionado
    */
-  static formatMetricsForPeriod(metrics: DashboardMetrics | null, periodo: 'hoje' | 'semana' | 'mes') {
-    if (!metrics) return null
+  static formatMetricsForPeriod(data: any | null, periodo: 'hoje' | 'semana' | 'mes') {
+    if (!data?.metricas) return null
 
-    const getValueByPeriod = (baseField: string) => {
-      switch (periodo) {
-        case 'hoje':
-          return metrics[`${baseField}_hoje` as keyof DashboardMetrics] as number
-        case 'semana':
-          return metrics[`${baseField}_semana` as keyof DashboardMetrics] as number
-        case 'mes':
-          return metrics[`${baseField}_mes` as keyof DashboardMetrics] as number
-        default:
-          return metrics[`${baseField}_hoje` as keyof DashboardMetrics] as number
-      }
-    }
+    const metricas = data.metricas[periodo]
+    if (!metricas) return null
 
     return {
-      novosLeads: getValueByPeriod('novos_leads'),
-      agendamentos: getValueByPeriod('agendamentos'),
-      tempoResposta: metrics.tempo_resposta_minutos,
-      taxaConversao: metrics.taxa_conversao_hoje,
+      novosLeads: metricas.novos_leads || 0,
+      agendamentos: metricas.agendamentos || 0,
+      tempoResposta: metricas.tempo_resposta_medio || 0,
+      taxaConversao: metricas.taxa_conversao || 0,
       variacoes: {
-        leads: metrics.variacao_leads,
-        agendamentos: metrics.variacao_agendamentos,
-        tempoResposta: metrics.variacao_tempo_resposta,
-        taxaConversao: metrics.variacao_taxa_conversao
+        leads: 0, // Temporário - pode ser calculado comparando períodos
+        agendamentos: 0,
+        tempoResposta: 0,
+        taxaConversao: 0
       }
     }
   }
@@ -168,5 +87,40 @@ export class DashboardService {
     const text = `${isPositive ? '+' : ''}${variacao.toFixed(1)}%`
     
     return { text, isPositive }
+  }
+
+  /**
+   * Busca métricas do dashboard (método legado - mantido para compatibilidade)
+   * @deprecated Use getDashboardDataByPeriod instead
+   */
+  static async getMetricasDashboard(clinicaId: number): Promise<any | null> {
+    const result = await this.getDashboardDataByPeriod(clinicaId, 'hoje')
+    return result.metrics
+  }
+
+  /**
+   * Busca conversas recentes (método legado - mantido para compatibilidade)
+   * @deprecated Use getDashboardDataByPeriod instead
+   */
+  static async getConversasRecentes(clinicaId: number, limit: number = 10): Promise<ConversaRecente[]> {
+    const result = await this.getDashboardDataByPeriod(clinicaId, 'hoje')
+    return result.conversas.slice(0, limit)
+  }
+
+  /**
+   * Formatar tempo atrás
+   */
+  private static formatarTempoAtras(dataInteracao: string): string {
+    const agora = new Date()
+    const data = new Date(dataInteracao)
+    const diffMs = agora.getTime() - data.getTime()
+    
+    const minutos = Math.floor(diffMs / (1000 * 60))
+    const horas = Math.floor(diffMs / (1000 * 60 * 60))
+    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (minutos < 60) return `${minutos} min atrás`
+    if (horas < 24) return `${horas}h atrás`
+    return `${dias} dias atrás`
   }
 } 

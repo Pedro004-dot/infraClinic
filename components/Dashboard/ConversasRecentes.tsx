@@ -99,7 +99,7 @@ export function ConversasRecentes({ conversas, loading, isLoading }: ConversasRe
                     <div className="h-6 bg-gray-200 rounded w-16"></div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                    <div className="h-4 bg-gray-200 rounded n v  w-12"></div>
                   </td>
                 </tr>
               ))}

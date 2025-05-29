@@ -18,7 +18,7 @@ export async function GET(
       );
     }
 
-    // Buscar pacientes do kanban usando a view
+    // Buscar pacientes do kanban usando a view atualizada
     const pacientesResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/infra_vw_kanban_board?clinica_id=eq.${clinicaId}&order=prioridade.asc,tempo_no_status.desc`,
       {
@@ -66,7 +66,11 @@ export async function GET(
       if (!pacientesPorStatus[paciente.status_atual]) {
         pacientesPorStatus[paciente.status_atual] = [];
       }
-      pacientesPorStatus[paciente.status_atual].push(paciente);
+      pacientesPorStatus[paciente.status_atual].push({
+        ...paciente,
+        // Formatar tempo_no_status para exibição
+        tempo_no_status_texto: formatarTempo(paciente.tempo_no_status)
+      });
     });
 
     // Converter contadores em objeto
@@ -86,7 +90,9 @@ export async function GET(
     return NextResponse.json({
       pacientesPorStatus,
       contadores,
-      statusDisponiveis
+      statusDisponiveis,
+      total_pacientes: pacientes.length,
+      ultima_atualizacao: new Date().toISOString()
     });
 
   } catch (error) {
@@ -105,7 +111,7 @@ export async function PUT(
 ) {
   try {
     const clinicaId = parseInt(params.id);
-    const { pacienteId, novoStatus } = await request.json();
+    const { pacienteId, novoStatus, motivo } = await request.json();
 
     if (isNaN(clinicaId) || !pacienteId || !novoStatus) {
       return NextResponse.json(
@@ -114,7 +120,16 @@ export async function PUT(
       );
     }
 
-    // Atualizar status do paciente
+    // Validar status permitidos
+    const statusPermitidos = ['LEAD', 'AGENDADO', 'RETORNO', 'FOLLOW_UP'];
+    if (!statusPermitidos.includes(novoStatus)) {
+      return NextResponse.json(
+        { error: 'Status inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Atualizar status do paciente usando a tabela de compatibilidade
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/infra_paciente_status?paciente_id=eq.${pacienteId}`,
       {
@@ -142,7 +157,39 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json({ success: true });
+    // Registrar a mudança de status como interação se motivo foi fornecido
+    if (motivo) {
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/interacoes`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paciente_id: pacienteId,
+            clinica_id: clinicaId,
+            tipo: 'mudanca_status',
+            canal: 'sistema',
+            direcao: 'interna',
+            conteudo: `Status alterado para ${novoStatus}`,
+            resumo: motivo,
+            topico: 'Mudança de Status',
+            sentimento: 'neutro',
+            urgencia: 'normal',
+            resolvido: true,
+            data_interacao: new Date().toISOString()
+          })
+        }
+      );
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: `Paciente movido para ${novoStatus} com sucesso`
+    });
 
   } catch (error) {
     console.error('Erro ao mover paciente:', error);
@@ -150,5 +197,88 @@ export async function PUT(
       { error: 'Erro interno do servidor' },
       { status: 500 }
     );
+  }
+}
+
+// POST - Adicionar novo paciente (útil para captação de leads)
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const clinicaId = parseInt(params.id);
+    const { nome, telefone, email, status = 'LEAD', prioridade = 'media', observacoes, origem = 'manual' } = await request.json();
+
+    if (isNaN(clinicaId) || !nome || !telefone) {
+      return NextResponse.json(
+        { error: 'Nome e telefone são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Mapear status do frontend para status interno
+    const statusInterno = status === 'LEAD' ? 'PRIMEIRO_CONTATO' : status;
+
+    // Adicionar novo paciente
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/pacientes`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          clinica_id: clinicaId,
+          nome,
+          telefone,
+          email,
+          status_atual: statusInterno,
+          prioridade,
+          observacoes,
+          origem,
+          ultimo_contato: new Date().toISOString()
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Erro ao criar paciente:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Erro ao criar paciente' },
+        { status: 500 }
+      );
+    }
+
+    const novoPaciente = await response.json();
+
+    return NextResponse.json({
+      success: true,
+      paciente: novoPaciente[0],
+      message: 'Paciente adicionado com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao criar paciente:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
+// Função auxiliar para formatar tempo
+function formatarTempo(minutos: number): string {
+  if (minutos < 60) {
+    return `${minutos} min atrás`;
+  } else if (minutos < 1440) { // menos de 24h
+    const horas = Math.floor(minutos / 60);
+    return `${horas}h atrás`;
+  } else {
+    const dias = Math.floor(minutos / 1440);
+    return `${dias} dias atrás`;
   }
 } 
