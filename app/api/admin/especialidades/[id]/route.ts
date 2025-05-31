@@ -28,7 +28,7 @@ export async function PUT(
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_especialidades?id=eq.${especialidadeId}`,
+      `${SUPABASE_URL}/rest/v1/especialidades?id=eq.${especialidadeId}`,
       {
         method: 'PATCH',
         headers: {
@@ -75,7 +75,7 @@ export async function DELETE(
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_especialidades?id=eq.${especialidadeId}`,
+      `${SUPABASE_URL}/rest/v1/especialidades?id=eq.${especialidadeId}`,
       {
         method: 'DELETE',
         headers: {

@@ -20,7 +20,7 @@ export async function GET(
 
     // Buscar pacientes do kanban usando a view atualizada
     const pacientesResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_vw_kanban_board?clinica_id=eq.${clinicaId}&order=prioridade.asc,tempo_no_status.desc`,
+      `${SUPABASE_URL}/rest/v1/vw_kanban_board?clinica_id=eq.${clinicaId}&order=prioridade.asc,tempo_no_status.desc`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -32,7 +32,7 @@ export async function GET(
 
     // Buscar contadores por status
     const contadoresResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_vw_kanban_counts?clinica_id=eq.${clinicaId}`,
+      `${SUPABASE_URL}/rest/v1/vw_kanban_counts?clinica_id=eq.${clinicaId}`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -60,8 +60,18 @@ export async function GET(
     const pacientes = await pacientesResponse.json();
     const contadoresArray = await contadoresResponse.json();
 
-    // Agrupar pacientes por status
-    const pacientesPorStatus: Record<string, any[]> = {};
+    // Agrupar pacientes por status - usando os status reais do banco
+    const pacientesPorStatus: Record<string, any[]> = {
+      'PRIMEIRO_CONTATO': [],
+      'LEAD_QUALIFICADO': [], 
+      'DADOS_COLETADOS': [],
+      'AGENDADO': [],
+      'EM_ATENDIMENTO': [],
+      'FOLLOW_UP': [],
+      'CONCLUIDO': [],
+      'CANCELADO': []
+    };
+
     pacientes.forEach((paciente: any) => {
       if (!pacientesPorStatus[paciente.status_atual]) {
         pacientesPorStatus[paciente.status_atual] = [];
@@ -79,18 +89,33 @@ export async function GET(
       contadores[item.status] = item.total;
     });
 
-    // Status disponíveis - 4 colunas principais
+    // Status disponíveis - mapeamento frontend para backend
     const statusDisponiveis = [
-      'LEAD',
-      'AGENDADO',
-      'RETORNO',
-      'FOLLOW_UP'
+      { frontend: 'LEAD', backend: 'PRIMEIRO_CONTATO', label: 'Lead' },
+      { frontend: 'QUALIFICADO', backend: 'LEAD_QUALIFICADO', label: 'Qualificado' },
+      { frontend: 'AGENDADO', backend: 'AGENDADO', label: 'Agendado' },
+      { frontend: 'FOLLOW_UP', backend: 'FOLLOW_UP', label: 'Follow-up' }
     ];
 
+    // Reorganizar dados para o frontend usando o mapeamento correto
+    const pacientesPorStatusFrontend: Record<string, any[]> = {};
+    
+    statusDisponiveis.forEach(status => {
+      pacientesPorStatusFrontend[status.frontend] = pacientesPorStatus[status.backend] || [];
+    });
+
+    // Incluir outros status que possam existir
+    Object.keys(pacientesPorStatus).forEach(status => {
+      const jaMapado = statusDisponiveis.find(s => s.backend === status);
+      if (!jaMapado && pacientesPorStatus[status].length > 0) {
+        pacientesPorStatusFrontend[status] = pacientesPorStatus[status];
+      }
+    });
+
     return NextResponse.json({
-      pacientesPorStatus,
+      pacientesPorStatus: pacientesPorStatusFrontend,
       contadores,
-      statusDisponiveis,
+      statusDisponiveis: statusDisponiveis.map(s => s.frontend),
       total_pacientes: pacientes.length,
       ultima_atualizacao: new Date().toISOString()
     });
@@ -129,9 +154,9 @@ export async function PUT(
       );
     }
 
-    // Atualizar status do paciente usando a tabela de compatibilidade
+    // Atualizar status do paciente diretamente na tabela pacientes
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_paciente_status?paciente_id=eq.${pacienteId}`,
+      `${SUPABASE_URL}/rest/v1/pacientes?id=eq.${pacienteId}`,
       {
         method: 'PATCH',
         headers: {
@@ -142,8 +167,7 @@ export async function PUT(
         },
         body: JSON.stringify({
           status_atual: novoStatus,
-          data_mudanca: new Date().toISOString(),
-          data_ultimo_status: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
       }
     );
@@ -157,10 +181,10 @@ export async function PUT(
       );
     }
 
-    // Registrar a mudança de status como interação se motivo foi fornecido
+    // Registrar histórico de mudança de status
     if (motivo) {
       await fetch(
-        `${SUPABASE_URL}/rest/v1/interacoes`,
+        `${SUPABASE_URL}/rest/v1/paciente_status_historico`,
         {
           method: 'POST',
           headers: {
@@ -170,25 +194,17 @@ export async function PUT(
           },
           body: JSON.stringify({
             paciente_id: pacienteId,
-            clinica_id: clinicaId,
-            tipo: 'mudanca_status',
-            canal: 'sistema',
-            direcao: 'interna',
-            conteudo: `Status alterado para ${novoStatus}`,
-            resumo: motivo,
-            topico: 'Mudança de Status',
-            sentimento: 'neutro',
-            urgencia: 'normal',
-            resolvido: true,
-            data_interacao: new Date().toISOString()
+            status_novo: novoStatus,
+            motivo: motivo,
+            sistema_automatico: false
           })
         }
       );
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: `Paciente movido para ${novoStatus} com sucesso`
+      message: 'Status atualizado com sucesso'
     });
 
   } catch (error) {
@@ -198,6 +214,12 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+// Função auxiliar para formatar tempo
+function formatarTempo(tempoTexto: string): string {
+  if (!tempoTexto) return 'Agora';
+  return tempoTexto;
 }
 
 // POST - Adicionar novo paciente (útil para captação de leads)
@@ -267,18 +289,5 @@ export async function POST(
       { error: 'Erro interno do servidor' },
       { status: 500 }
     );
-  }
-}
-
-// Função auxiliar para formatar tempo
-function formatarTempo(minutos: number): string {
-  if (minutos < 60) {
-    return `${minutos} min atrás`;
-  } else if (minutos < 1440) { // menos de 24h
-    const horas = Math.floor(minutos / 60);
-    return `${horas}h atrás`;
-  } else {
-    const dias = Math.floor(minutos / 1440);
-    return `${dias} dias atrás`;
   }
 } 

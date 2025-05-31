@@ -19,7 +19,7 @@ export async function GET(
 
     // Buscar especialidades da clínica
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_especialidades?clinica_id=eq.${clinicaId}&select=*&order=nome`,
+      `${SUPABASE_URL}/rest/v1/especialidades?clinica_id=eq.${clinicaId}&select=*&order=nome`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,

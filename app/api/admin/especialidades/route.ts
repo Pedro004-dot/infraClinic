@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/infra_especialidades`,
+      `${SUPABASE_URL}/rest/v1/especialidades`,
       {
         method: 'POST',
         headers: {

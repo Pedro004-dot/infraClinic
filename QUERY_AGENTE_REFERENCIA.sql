@@ -1,11 +1,12 @@
 -- ====================================
 -- QUERY DE REFERÊNCIA PARA O AGENTE AI
--- Tabela: agente_updates
+-- Tabela: agente_updates (COM UPSERT)
 -- ====================================
 
+-- UPSERT: Insere novo ou atualiza existente
 INSERT INTO agente_updates (
     telefone,           -- Telefone limpo (apenas números)
-    clinica_id,         -- ID da clínica (3 ou 4)
+    clinica_id,         -- ID da clínica (sempre 4 - DermaEstética)
     nome,               -- Nome do paciente (se fornecido)
     status_novo,        -- Status sugerido pelo agente
     prioridade,         -- Prioridade baseada na urgência
@@ -17,43 +18,109 @@ INSERT INTO agente_updates (
 ) VALUES (
     '{{ $fromAI("telefone", "Extraia APENAS os números do telefone removendo @c.us e outros caracteres. Exemplo: 5521999887766@c.us deve retornar 5521999887766") }}',
     
-    {{ $fromAI("clinica_id", "OBRIGATÓRIO: Analise o contexto e retorne: 3 (para assuntos médicos gerais, cardiologia, check-up, exames, Dr. Carlos, Dra. Ana) ou 4 (para estética, botox, preenchimento, laser, harmonização, Dra. Marina, Dra. Camila)") }},
+    4,  -- *** SEMPRE 4 (DermaEstética Clinic) ***
     
     '{{ $fromAI("nome_paciente", "Extraia o nome do paciente se mencionado na conversa, senão retorne NULL") }}',
     
-    '{{ $fromAI("status_novo", "Classifique com EXATAMENTE uma opção: PRIMEIRO_CONTATO (primeira vez/inicial), LEAD_QUALIFICADO (demonstrou interesse real/quer agendar), AGENDADO (consulta marcada), EM_ATENDIMENTO (sendo atendido), CONCLUIDO (finalizado), FOLLOW_UP (acompanhamento/retorno)") }}',
+    '{{ $fromAI("status_novo", "Classifique com EXATAMENTE uma opção: PRIMEIRO_CONTATO (primeira vez/inicial), LEAD_QUALIFICADO (demonstrou interesse real/quer agendar), AGENDADO (consulta marcada), EM_ATENDIMENTO (sendo atendido), CONCLUIDO (finalizado), FOLLOW_UP (acompanhamento/retorno), DADOS_COLETADOS (coletou nome/info)") }}',
     
     '{{ $fromAI("prioridade", "Baseado na urgência, retorne: alta (emergência, dor forte, urgente), media (situação normal), baixa (informações gerais)") }}',
     
     '{{ $fromAI("mensagem_usuario", "Copie exatamente a mensagem que o usuário enviou, sem modificações") }}',
     
-    '{{ $fromAI("topico", "Identifique o assunto principal: Cardiologia, Dermatologia Estética, Harmonização Facial, Laser, Agendamento, Emergência, Check-up, Exames, Preenchimento, Botox, Criolipólise, Consulta Geral, Informações, ou o assunto específico mencionado") }}',
+    '{{ $fromAI("topico", "Identifique o assunto principal: Harmonização Facial, Preenchimento Labial, Botox, Laser CO2, IPL, Radiofrequência, Criolipólise, Agendamento, Emergência, Consulta Geral, Informações, ou o assunto específico mencionado") }}',
     
     '{{ $fromAI("sentimento", "Classifique como: positivo (elogios, satisfeito, animado), neutro (objetivo, normal, informativo), negativo (reclamação, insatisfeito, preocupado), preocupado (ansioso, com medo)") }}',
     
     '{{ $fromAI("urgencia", "Classifique como: alta (emergência, dor forte, palavra urgente), normal (situação comum), baixa (informações gerais, sem pressa)") }}',
     
     '{{ $fromAI("canal", "Identifique o canal: whatsapp, instagram, facebook, telefone, email, site, ou o canal específico usado") }}'
-);
 
--- Processar automaticamente após inserção
+-- *** UPSERT: Se telefone já existe, atualiza os dados ***
+) ON CONFLICT (telefone, clinica_id) 
+DO UPDATE SET 
+    nome = EXCLUDED.nome,
+    status_novo = EXCLUDED.status_novo,
+    prioridade = EXCLUDED.prioridade,
+    mensagem = EXCLUDED.mensagem,
+    topico = EXCLUDED.topico,
+    sentimento = EXCLUDED.sentimento,
+    urgencia = EXCLUDED.urgencia,
+    canal = EXCLUDED.canal,
+    processado = false,        -- Resetar para reprocessar
+    data_update = NOW(),       -- Atualizar timestamp
+    erro = null;               -- Limpar erros
+
+-- Processar automaticamente após inserção/atualização
 SELECT processar_agente_updates();
 
 -- ====================================
 -- EXEMPLOS DE USO PRÁTICO:
 -- ====================================
 
--- Exemplo 1: Paciente cardiologia (Clínica ID: 3)
+-- Exemplo 1: Novo paciente estética
 INSERT INTO agente_updates (telefone, clinica_id, nome, status_novo, prioridade, mensagem, topico, sentimento, urgencia, canal)
-VALUES ('5511987654321', 3, 'João Silva', 'PRIMEIRO_CONTATO', 'alta', 'Estou com dores no peito, preciso de um cardiologista urgente', 'Cardiologia', 'preocupado', 'alta', 'whatsapp');
+VALUES ('5511987654321', 4, 'Ana Silva', 'PRIMEIRO_CONTATO', 'media', 'Quero fazer botox na testa, quanto custa?', 'Harmonização Facial', 'positivo', 'normal', 'whatsapp')
+ON CONFLICT (telefone, clinica_id) DO UPDATE SET 
+    nome = EXCLUDED.nome, status_novo = EXCLUDED.status_novo, prioridade = EXCLUDED.prioridade,
+    mensagem = EXCLUDED.mensagem, topico = EXCLUDED.topico, sentimento = EXCLUDED.sentimento,
+    urgencia = EXCLUDED.urgencia, canal = EXCLUDED.canal, processado = false, data_update = NOW(), erro = null;
 
--- Exemplo 2: Paciente estética (Clínica ID: 4)  
+-- Exemplo 2: Atualizar mesmo paciente
 INSERT INTO agente_updates (telefone, clinica_id, nome, status_novo, prioridade, mensagem, topico, sentimento, urgencia, canal)
-VALUES ('5511976543210', 4, 'Maria Costa', 'LEAD_QUALIFICADO', 'media', 'Quero fazer botox na testa, quanto custa?', 'Harmonização Facial', 'positivo', 'normal', 'instagram');
+VALUES ('5511987654321', 4, 'Ana Silva', 'AGENDADO', 'alta', 'Quero agendar para amanhã às 14h', 'Agendamento', 'positivo', 'alta', 'whatsapp')
+ON CONFLICT (telefone, clinica_id) DO UPDATE SET 
+    nome = EXCLUDED.nome, status_novo = EXCLUDED.status_novo, prioridade = EXCLUDED.prioridade,
+    mensagem = EXCLUDED.mensagem, topico = EXCLUDED.topico, sentimento = EXCLUDED.sentimento,
+    urgencia = EXCLUDED.urgencia, canal = EXCLUDED.canal, processado = false, data_update = NOW(), erro = null;
 
--- Exemplo 3: Agendamento confirmado
-INSERT INTO agente_updates (telefone, clinica_id, status_novo, mensagem, topico, canal)
-VALUES ('5511965432109', 3, 'AGENDADO', 'Consulta confirmada para terça-feira às 14h', 'Agendamento', 'whatsapp');
+-- ====================================
+-- VERIFICAÇÕES ÚTEIS:
+-- ====================================
+
+-- Ver últimas inserções/atualizações
+SELECT telefone, nome, status_novo, data_update, processado 
+FROM agente_updates 
+ORDER BY data_update DESC;
+
+-- Ver contagem por telefone (deve ser sempre 1)
+SELECT telefone, COUNT(*) as quantidade
+FROM agente_updates 
+GROUP BY telefone
+HAVING COUNT(*) > 1;  -- Se retornar alguma linha, há problema!
+
+-- Ver dashboard atualizado
+SELECT clinica_nome, novos_leads_hoje, agendados 
+FROM vw_dashboard_principal 
+WHERE clinica_id = 4;
+
+-- ====================================
+-- CLÍNICA DISPONÍVEL:
+-- ====================================
+
+/*
+ID: 4 - DermaEstética Clinic (Estética)  
+- Harmonização Facial, Laser, Tratamentos Corporais
+- Dra. Marina Fernandes, Dra. Camila Santos
+- Procedimentos: Botox, Preenchimento, Laser CO2, IPL, etc.
+- Palavras-chave: botox, preenchimento, laser, estética, harmonização
+*/
+
+-- ====================================
+-- CLÍNICAS DISPONÍVEIS:
+-- ====================================
+
+/*
+ID: 3 - Clínica OxyVital (Médica Geral)
+- Cardiologia, Clínica Geral, Exames
+- Dr. Carlos Silva, Dra. Ana Santos
+- Palavras-chave: cardiologia, pressão, check-up, médico
+
+ID: 4 - DermaEstética Clinic (Estética)  
+- Harmonização Facial, Laser, Tratamentos
+- Dra. Marina Fernandes, Dra. Camila Santos
+- Palavras-chave: botox, preenchimento, laser, estética
+*/
 
 -- ====================================
 -- MAPEAMENTO DE CAMPOS:
@@ -74,22 +141,6 @@ N/A             -> canal (NOVO - identificar origem)
 */
 
 -- ====================================
--- CLÍNICAS DISPONÍVEIS:
--- ====================================
-
-/*
-ID: 3 - Clínica OxyVital (Médica Geral)
-- Cardiologia, Clínica Geral, Exames
-- Dr. Carlos Silva, Dra. Ana Santos
-- Palavras-chave: cardiologia, pressão, check-up, médico
-
-ID: 4 - DermaEstética Clinic (Estética)  
-- Harmonização Facial, Laser, Tratamentos
-- Dra. Marina Fernandes, Dra. Camila Santos
-- Palavras-chave: botox, preenchimento, laser, estética
-*/
-
--- ====================================
 -- VERIFICAÇÕES ÚTEIS:
 -- ====================================
 
@@ -102,9 +153,4 @@ ORDER BY data_update DESC;
 SELECT * FROM agente_updates 
 WHERE processado = true 
 ORDER BY data_update DESC 
-LIMIT 10;
-
--- Ver dashboard atualizado
-SELECT clinica_nome, novos_leads_hoje, agendados 
-FROM vw_dashboard_principal 
-WHERE clinica_id IN (3, 4); 
+LIMIT 10; 

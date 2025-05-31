@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { 
       telefone, 
-      clinica_id = 3, 
+      clinica_id = 4, // Mudado para 4 (DermaEstética) 
       nome, 
       status_novo, 
       prioridade, 
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Inserir na tabela agente_updates
-    const insertResponse = await fetch(
+    // UPSERT na tabela agente_updates (INSERT ou UPDATE se já existir)
+    const upsertResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/agente_updates`,
       {
         method: 'POST',
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
+          'Prefer': 'return=representation,resolution=merge-duplicates'  // *** UPSERT ***
         },
         body: JSON.stringify({
           telefone,
@@ -48,16 +48,19 @@ export async function POST(request: NextRequest) {
           topico,
           sentimento,
           urgencia,
-          canal
+          canal,
+          processado: false,  // Resetar para reprocessar
+          data_update: new Date().toISOString(),  // Atualizar timestamp
+          erro: null  // Limpar erros anteriores
         })
       }
     );
 
-    if (!insertResponse.ok) {
-      const errorText = await insertResponse.text();
-      console.error('Erro ao inserir agente_updates:', errorText);
+    if (!upsertResponse.ok) {
+      const errorText = await upsertResponse.text();
+      console.error('Erro ao fazer UPSERT agente_updates:', errorText);
       return NextResponse.json(
-        { error: 'Erro ao inserir atualização' },
+        { error: 'Erro ao inserir/atualizar dados' },
         { status: 500 }
       );
     }
@@ -85,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Atualização inserida e processada com sucesso',
+      message: 'Atualização inserida/atualizada e processada com sucesso',
       updates_processadas: processResult || 1,
       telefone,
       status_novo

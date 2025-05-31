@@ -30,9 +30,9 @@ export async function GET(
       }
     );
 
-    // Buscar conversas recentes
+    // Buscar conversas recentes - ordenadas pela data mais recente
     const conversasResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/vw_conversas_recentes?clinica_id=eq.${clinicaId}&limit=10`,
+      `${SUPABASE_URL}/rest/v1/vw_conversas_recentes?clinica_id=eq.${clinicaId}&order=data_interacao.desc&limit=10`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
