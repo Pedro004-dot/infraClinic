@@ -24,7 +24,7 @@ export default function LoginPage() {
         router.push('/admin');
       } else {
         // Redirecionar para dashboard da clínica (usando ID 1 como exemplo)
-        router.push('/clinica/4');
+        router.push('/clinica/10');
       }
     } catch (error) {
       console.error('Erro no login:', error);
